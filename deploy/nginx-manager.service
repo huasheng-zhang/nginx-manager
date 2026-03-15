@@ -1,0 +1,32 @@
+[Unit]
+Description=Nginx Manager Web Application
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/nginx-manager
+Environment="PATH=/opt/nginx-manager/venv/bin"
+Environment="DJANGO_SETTINGS_MODULE=nginx_manager.settings_production"
+ExecStart=/opt/nginx-manager/venv/bin/gunicorn \
+    --workers 4 \
+    --bind 0.0.0.0:8000 \
+    --timeout 300 \
+    --keep-alive 5 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --access-logfile /var/log/nginx-manager/gunicorn-access.log \
+    --error-logfile /var/log/nginx-manager/gunicorn-error.log \
+    --capture-output \
+    --enable-stdio-inheritance \
+    nginx_manager.wsgi:application
+
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nginx-manager
+
+[Install]
+WantedBy=multi-user.target
