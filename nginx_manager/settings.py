@@ -119,6 +119,7 @@ USE_TZ = False
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # 运行collectstatic时收集到的目录
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
