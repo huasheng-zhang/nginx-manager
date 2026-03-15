@@ -11,8 +11,8 @@ from .settings import *
 # 安全设置
 # ==============================================================================
 
-# 从环境变量获取密钥
-SECRET_KEY = os.environ.get('SECRET_KEY')
+# 从环境变量获取密钥，如果没有则使用默认值（生产环境必须修改！）
+SECRET_KEY = os.environ.get('SECRET_KEY') or 'django-insecure-change-this-secret-key-in-production-environment'
 
 # 关闭调试模式
 DEBUG = False
@@ -34,20 +34,29 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 # ==============================================================================
-# 数据库配置（PostgreSQL）
+# 数据库配置
 # ==============================================================================
 
+# 使用SQLite（简单部署，适合小型项目）
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'nginx_manager'),
-        'USER': os.environ.get('DB_USER', 'nginx_user'),
-        'PASSWORD': os.environ.get('DB_PASSWORD'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'CONN_MAX_AGE': 60,  # 连接池
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# 如果使用PostgreSQL（生产推荐），请取消下面注释并安装psycopg2
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.environ.get('DB_NAME', 'nginx_manager'),
+#         'USER': os.environ.get('DB_USER', 'nginx_user'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD', 'your_password'),
+#         'HOST': os.environ.get('DB_HOST', 'localhost'),
+#         'PORT': os.environ.get('DB_PORT', '5432'),
+#         'CONN_MAX_AGE': 60,  # 连接池
+#     }
+# }
 
 # ==============================================================================
 # Redis 缓存配置
