@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}编辑{% else %}添加{% endif %}节点 - Nginx集群管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="{% url 'nginx:node_list' %}">Nginx节点</a></li>
+<li class="breadcrumb-item active">{% if object %}编辑{% else %}添加{% endif %}节点</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-server"></i>
+        {% if object %}编辑节点{% else %}添加节点{% endif %}
+    </h2>
+    <a href="{% url 'nginx:node_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> 返回列表
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h4>基本信息</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">节点名称 *</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">状态</label>
+                            {{ form.status }}
+                            {% if form.status.errors %}
+                            <div class="text-danger">{{ form.status.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">主机地址 *</label>
+                            {{ form.host }}
+                            {% if form.host.errors %}
+                            <div class="text-danger">{{ form.host.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">端口 *</label>
+                            {{ form.port }}
+                            {% if form.port.errors %}
+                            <div class="text-danger">{{ form.port.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>配置信息</h4>
+                <div class="mb-3">
+                    <label class="form-label">配置文件路径</label>
+                    {{ form.config_path }}
+                    {% if form.config_path.errors %}
+                    <div class="text-danger">{{ form.config_path.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        Nginx配置文件在服务器上的路径，默认为 /etc/nginx/nginx.conf
+                    </small>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>描述信息</h4>
+                <div class="mb-3">
+                    <label class="form-label">描述</label>
+                    {{ form.description }}
+                    {% if form.description.errors %}
+                    <div class="text-danger">{{ form.description.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">
+                        可选，用于描述该节点的用途和特点
+                    </small>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'nginx:node_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Nginx节点 - Nginx集群管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item active">Nginx节点</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-server"></i> Nginx节点管理</h2>
+    {% if user_permissions.can_add_nodes %}
+    <a href="{% url 'nginx:node_add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> 添加节点
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <form method="get" class="row mb-4">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" placeholder="搜索节点名称或主机" 
+                       value="{{ request.GET.search }}">
+            </div>
+            <div class="col-md-3">
+                <select name="status" class="form-control">
+                    <option value="">所有状态</option>
+                    <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>运行中</option>
+                    <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>已停止</option>
+                    <option value="error" {% if request.GET.status == 'error' %}selected{% endif %}>异常</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+                <a href="{% url 'nginx:node_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-refresh"></i> 重置
+                </a>
+            </div>
+        </form>
+        
+        <!-- 节点列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>节点名称</th>
+                        <th>主机地址</th>
+                        <th>端口</th>
+                        <th>状态</th>
+                        <th>路由规则</th>
+                        <th>创建时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for node in nodes %}
+                    <tr>
+                        <td>
+                            <strong>{{ node.name }}</strong>
+                            {% if node.description %}
+                            <br><small class="text-muted">{{ node.description|truncatechars:30 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ node.host }}</td>
+                        <td>{{ node.port }}</td>
+                        <td>
+                            <span class="status-badge status-{{ node.status }}">
+                                {{ node.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ node.route_rules.count }} 规则</span>
+                        </td>
+                        <td>{{ node.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'nginx:node_detail' node.pk %}" class="btn btn-outline-primary" title="查看">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if user_permissions.can_edit_nodes %}
+                                <button onclick="manageNode({{ node.pk }}, 'status', this)" class="btn btn-outline-info" title="检查状态">
+                                    <i class="fas fa-sync"></i>
+                                </button>
+                                <a href="{% url 'nginx:node_edit' node.pk %}" class="btn btn-outline-secondary" title="编辑">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" title="启动">
+                                        <i class="fas fa-play"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="manageNode({{ node.pk }}, 'start', null)"><i class="fas fa-play"></i> 启动</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="manageNode({{ node.pk }}, 'restart', null)"><i class="fas fa-redo"></i> 重启</a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="manageNode({{ node.pk }}, 'reload', null)"><i class="fas fa-sync-alt"></i> 重载配置</a></li>
+                                    </ul>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button type="button" class="btn btn-outline-warning dropdown-toggle" data-bs-toggle="dropdown" title="测试/停止">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="manageNode({{ node.pk }}, 'test', null)"><i class="fas fa-plug"></i> 测试连接</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item text-danger" href="#" onclick="manageNode({{ node.pk }}, 'stop', null)"><i class="fas fa-stop"></i> 停止</a></li>
+                                    </ul>
+                                </div>
+                                {% endif %}
+                                {% if user_permissions.can_delete_nodes %}
+                                <a href="{% url 'nginx:node_delete' node.pk %}" class="btn btn-outline-danger" title="删除">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">暂无数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 状态模态框 -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusModalLabel">节点状态</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="statusContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在检查节点状态...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.status-badge {
+    padding: 0.25em 0.6em;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-weight: 500;
+}
+
+.status-active {
+    background-color: #d1f7e9;
+    color: #0a6e4d;
+}
+
+.status-inactive {
+    background-color: #ffe0e0;
+    color: #c41e3a;
+}
+
+.status-error {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.btn-group .dropdown-menu {
+    font-size: 0.875rem;
+}
+
+.btn-group .dropdown-item {
+    padding: 0.25rem 0.75rem;
+}
+
+.btn-group .dropdown-item i {
+    width: 16px;
+    margin-right: 8px;
+}
+</style>
+
+<script>
+function manageNode(nodeId, action, buttonElement) {
+    // 禁用按钮防止重复点击
+    if (buttonElement) {
+        buttonElement.disabled = true;
+    }
+    
+    // 显示加载提示
+    const loadingToast = showToast('info', `正在${getActionDisplayName(action)}...`);
+    
+    // 发送请求
+    fetch(`/nginx/api/nodes/${nodeId}/${action}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideToast(loadingToast);
+        
+        if (data.success) {
+            showToast('success', data.message || `${getActionDisplayName(action)}成功`);
+            
+            // 特殊处理状态检查
+            if (action === 'status') {
+                showStatusModal(data);
+            }
+            
+            // 延迟刷新页面
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showToast('error', data.error || `${getActionDisplayName(action)}失败`);
+        }
+    })
+    .catch(error => {
+        hideToast(loadingToast);
+        showToast('error', `操作失败: ${error.message}`);
+        console.error('Error:', error);
+    })
+    .finally(() => {
+        if (buttonElement) {
+            buttonElement.disabled = false;
+        }
+    });
+}
+
+function getActionDisplayName(action) {
+    const actionMap = {
+        'start': '启动',
+        'stop': '停止',
+        'reload': '重载配置',
+        'restart': '重启',
+        'status': '检查状态',
+        'test': '测试连接'
+    };
+    return actionMap[action] || action;
+}
+
+function showStatusModal(data) {
+    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    const content = document.getElementById('statusContent');
+    
+    let html = `
+        <div class="row">
+            <div class="col-12 mb-3">
+                <h6>状态: <span class="status-badge status-${data.status}">${data.status_display}</span></h6>
+            </div>
+        </div>
+    `;
+    
+    if (data.info && data.info.version) {
+        html += `
+            <div class="row">
+                <div class="col-12">
+                    <h6>Nginx信息</h6>
+                    <pre class="bg-light p-2 rounded" style="font-size: 0.8em; max-height: 300px; overflow-y: auto;">`;
+        
+        if (data.info.version) {
+            html += `版本: ${data.info.version}\n`;
+        }
+        if (data.info.config_path) {
+            html += `配置路径: ${data.info.config_path}\n`;
+        }
+        if (data.info.error_log_path) {
+            html += `错误日志: ${data.info.error_log_path}\n`;
+        }
+        if (data.info.access_log_path) {
+            html += `访问日志: ${data.info.access_log_path}\n`;
+        }
+        
+        html += `</pre>
+                </div>
+            </div>
+        `;
+    }
+    
+    content.innerHTML = html;
+    modal.show();
+}
+
+function showToast(type, message) {
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} border-0" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 250px;">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+    toast.show();
+    
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+    
+    return toastId;
+}
+
+function hideToast(toastId) {
+    const toastElement = document.getElementById(toastId);
+    if (toastElement) {
+        const toast = bootstrap.Toast.getInstance(toastElement);
+        if (toast) {
+            toast.hide();
+        }
+    }
+}
+
+function getCsrfToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='));
+    return cookieValue ? cookieValue.split('=')[1] : '';
+}
+</script>
+{% endblock %}

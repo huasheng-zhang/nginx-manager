@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}编辑{% else %}添加{% endif %}IP封禁规则 - Nginx集群管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="{% url 'nginx:ip_block_list' %}">IP封禁规则</a></li>
+<li class="breadcrumb-item active">{% if object %}编辑{% else %}添加{% endif %}规则</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-shield-alt"></i>
+        {% if object %}编辑IP封禁规则{% else %}添加IP封禁规则{% endif %}
+    </h2>
+    <a href="{% url 'nginx:ip_block_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> 返回列表
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h4>基本信息</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">规则名称 *</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">所属节点 *</label>
+                            {{ form.node }}
+                            {% if form.node.errors %}
+                            <div class="text-danger">{{ form.node.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>IP封禁设置</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">IP地址 *</label>
+                            {{ form.ip_address }}
+                            {% if form.ip_address.errors %}
+                            <div class="text-danger">{{ form.ip_address.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">输入要封禁或允许的IP地址</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">子网掩码（可选）</label>
+                            {{ form.subnet_mask }}
+                            {% if form.subnet_mask.errors %}
+                            <div class="text-danger">{{ form.subnet_mask.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">例如：24 表示 /24 子网（CIDR表示法）</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">操作 *</label>
+                            {{ form.action }}
+                            {% if form.action.errors %}
+                            <div class="text-danger">{{ form.action.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">选择对该IP的操作</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>应用范围</h4>
+                <div class="mb-3">
+                    <label class="form-label">域名列表（可选）</label>
+                    {{ form.domains }}
+                    {% if form.domains.errors %}
+                    <div class="text-danger">{{ form.domains.errors }}</div>
+                    {% endif %}
+                    <small class="form-text text-muted">多个域名用逗号分隔，留空表示应用于所有域名</small>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>状态设置</h4>
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                            启用规则
+                        </label>
+                    </div>
+                    {% if form.is_active.errors %}
+                    <div class="text-danger">{{ form.is_active.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存规则
+                </button>
+                <a href="{% url 'nginx:ip_block_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+.form-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+}
+
+.form-section h4 {
+    margin-bottom: 1.5rem;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.form-actions {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+</style>
+{% endblock %}

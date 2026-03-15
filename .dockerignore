@@ -1,0 +1,87 @@
+# 版本控制
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+.eggs/
+
+# 开发环境
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+logs/
+
+# 数据库（生产环境使用 PostgreSQL）
+db.sqlite3
+
+# 静态文件（生产环境会重新收集）
+staticfiles/
+
+# 媒体文件（应挂载为卷）
+media/
+
+# 备份文件
+backups/
+*.backup
+*.bak
+
+# 临时文件
+*.tmp
+*.temp
+.env
+.env.local
+.env.production
+
+# 文档和测试
+docs/
+tests/
+test/
+*.md
+README.md
+TEMPLATE_FIX_SUMMARY.md
+DEPLOYMENT_GUIDE.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# 编辑器配置
+.editorconfig
+.pylintrc
+.flake8
+.mypy.ini
+
+# Python 打包
+dist/
+build/
+*.egg
+
+# 操作系统文件
+.DS_Store
+Desktop.ini

@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}实时监控 - 监控管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item active">实时监控</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-chart-line"></i> 实时监控</h2>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">活跃连接数</div>
+                <div class="stat-value" id="active-connections">-</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">每秒请求数</div>
+                <div class="stat-value" id="requests-per-second">-</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">平均响应时间</div>
+                <div class="stat-value" id="avg-response-time">-</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">节点状态</div>
+                <div class="stat-value" id="node-status">-</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">请求趋势（最近1小时）</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="requestsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">响应时间趋势</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="responseTimeChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">活跃告警</h5>
+            </div>
+            <div class="card-body">
+                <div id="active-alerts">
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                        <p>暂无活跃告警</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">节点列表</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>节点</th>
+                                <th>状态</th>
+                                <th>连接数</th>
+                            </tr>
+                        </thead>
+                        <tbody id="node-stats">
+                            {% for node in nodes %}
+                            <tr>
+                                <td>{{ node.name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ node.status|yesno:'success,secondary,danger' }}">
+                                        {{ node.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>-</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let requestsChart, responseTimeChart;
+let currentNode = null;
+
+$(document).ready(function() {
+    initCharts();
+    loadMonitoringData();
+    
+    // 每30秒刷新数据
+    setInterval(loadMonitoringData, 30000);
+});
+
+function initCharts() {
+    const ctx1 = document.getElementById('requestsChart').getContext('2d');
+    requestsChart = new Chart(ctx1, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '每秒请求数',
+                data: [],
+                borderColor: 'rgb(102, 126, 234)',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    const ctx2 = document.getElementById('responseTimeChart').getContext('2d');
+    responseTimeChart = new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: '平均响应时间 (ms)',
+                data: [],
+                borderColor: 'rgb(237, 100, 166)',
+                backgroundColor: 'rgba(237, 100, 166, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function loadMonitoringData() {
+    const url = currentNode ? `/monitoring/api/monitoring-data/?node=${currentNode}&hours=1` : '/monitoring/api/monitoring-data/?hours=1';
+    
+    $.ajax({
+        url: url,
+        method: 'GET',
+        success: function(response) {
+            if (response.data && response.data.length > 0) {
+                updateStats(response.data);
+                updateCharts(response.data);
+            }
+        },
+        error: function(xhr) {
+            console.error('加载监控数据失败:', xhr.responseText);
+        }
+    });
+    
+    // 加载活跃告警
+    loadActiveAlerts();
+}
+
+function updateStats(data) {
+    const latest = data[data.length - 1];
+    
+    $('#active-connections').text(latest.active_connections || '-');
+    $('#requests-per-second').text(latest.requests_per_second || '-');
+    $('#avg-response-time').text(latest.avg_response_time ? (latest.avg_response_time * 1000).toFixed(2) + 'ms' : '-');
+    
+    // 更新节点状态
+    const activeNodes = $('.status-badge.bg-success').length;
+    const totalNodes = $('.status-badge').length;
+    $('#node-status').text(`${activeNodes}/${totalNodes}`);
+}
+
+function updateCharts(data) {
+    const labels = data.map(item => item.timestamp.substring(11, 16));
+    const requests = data.map(item => item.requests_per_second || 0);
+    const responseTimes = data.map(item => (item.avg_response_time || 0) * 1000);
+    
+    requestsChart.data.labels = labels;
+    requestsChart.data.datasets[0].data = requests;
+    requestsChart.update();
+    
+    responseTimeChart.data.labels = labels;
+    responseTimeChart.data.datasets[0].data = responseTimes;
+    responseTimeChart.update();
+}
+
+function loadActiveAlerts() {
+    $.ajax({
+        url: '/monitoring/api/active-alerts/',
+        method: 'GET',
+        success: function(response) {
+            if (response.alerts && response.alerts.length > 0) {
+                let html = '';
+                response.alerts.slice(0, 5).forEach(alert => {
+                    const severityClass = {
+                        'info': 'bg-info',
+                        'warning': 'bg-warning text-dark',
+                        'critical': 'bg-danger',
+                        'emergency': 'bg-dark'
+                    };
+                    
+                    html += `
+                        <div class="alert alert-${alert.severity} alert-dismissible fade show">
+                            <strong>${alert.rule__name}</strong><br>
+                            <small>${alert.node__name} - ${alert.started_at}</small>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    `;
+                });
+                $('#active-alerts').html(html);
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

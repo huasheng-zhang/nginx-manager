@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}分析报告 - 监控管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="/monitoring/dashboard/">监控管理</a></li>
+<li class="breadcrumb-item active">分析报告</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-pdf"></i> 日志分析报告</h2>
+    {% if user_permissions.can_generate_reports %}
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateReportModal">
+        <i class="fas fa-plus"></i> 生成报告
+    </button>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- 筛选条件 -->
+        <form method="get" class="row mb-4">
+            <div class="col-md-4">
+                <select name="node" class="form-control">
+                    <option value="">所有节点</option>
+                    {% for node in view.nodes %}
+                    <option value="{{ node.pk }}" {% if request.GET.node == node.pk|stringformat:"s" %}selected{% endif %}>{{ node.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <select name="report_type" class="form-control">
+                    <option value="">所有类型</option>
+                    <option value="daily" {% if request.GET.report_type == "daily" %}selected{% endif %}>日报</option>
+                    <option value="weekly" {% if request.GET.report_type == "weekly" %}selected{% endif %}>周报</option>
+                    <option value="monthly" {% if request.GET.report_type == "monthly" %}selected{% endif %}>月报</option>
+                    <option value="custom" {% if request.GET.report_type == "custom" %}selected{% endif %}>自定义</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-filter"></i> 筛选
+                </button>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'monitoring:report_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-refresh"></i> 重置
+                </a>
+            </div>
+        </form>
+
+        <!-- 报告列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>报告名称</th>
+                        <th>节点</th>
+                        <th>类型</th>
+                        <th>时间范围</th>
+                        <th>生成时间</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports %}
+                    <tr>
+                        <td>
+                            <strong>{{ report.name }}</strong>
+                            {% if report.description %}
+                            <br><small class="text-muted">{{ report.description|truncatechars:40 }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ report.node.name }}</td>
+                        <td>
+                            <span class="badge bg-info">{{ report.get_report_type_display }}</span>
+                        </td>
+                        <td>
+                            {{ report.start_date|date:"Y-m-d" }} ~ {{ report.end_date|date:"Y-m-d" }}
+                        </td>
+                        <td>{{ report.generated_at|date:"Y-m-d H:i" }}</td>
+                        <td>
+                            {% if report.status == 'completed' %}
+                                <span class="badge bg-success">已完成</span>
+                            {% elif report.status == 'generating' %}
+                                <span class="badge bg-warning text-dark">生成中</span>
+                            {% elif report.status == 'failed' %}
+                                <span class="badge bg-danger">失败</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ report.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if report.status == 'completed' and report.file_path %}
+                                <a href="{{ report.file_path }}" class="btn btn-outline-primary" title="下载报告" target="_blank">
+                                    <i class="fas fa-download"></i>
+                                </a>
+                                {% endif %}
+                                <button type="button" class="btn btn-outline-info" onclick="viewReportDetails({{ report.pk }})" title="查看详情">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-danger" onclick="deleteReport({{ report.pk }})" title="删除">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">暂无分析报告</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">&laquo; 首页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }} / {{ paginator.num_pages }}</span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ paginator.num_pages }}">末页 &raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 生成报告模态框 -->
+<div class="modal fade" id="generateReportModal" tabindex="-1" aria-labelledby="generateReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="generateReportModalLabel">生成分析报告</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'monitoring:generate_report_api' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="node" class="form-label">选择节点 *</label>
+                        <select name="node" class="form-control" required>
+                            <option value="">-- 请选择节点 --</option>
+                            {% for node in view.nodes %}
+                            <option value="{{ node.pk }}">{{ node.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="report_type" class="form-label">报告类型 *</label>
+                        <select name="report_type" class="form-control" required>
+                            <option value="">-- 请选择类型 --</option>
+                            <option value="daily">日报（最近24小时）</option>
+                            <option value="weekly">周报（最近7天）</option>
+                            <option value="monthly">月报（最近30天）</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    
+                    <div id="custom-date-range" style="display: none;">
+                        <div class="mb-3">
+                            <label for="start_date" class="form-label">开始日期 *</label>
+                            <input type="date" name="start_date" class="form-control">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="end_date" class="form-label">结束日期 *</label>
+                            <input type="date" name="end_date" class="form-control">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">生成报告</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// 报告类型切换
+document.querySelector('select[name="report_type"]').addEventListener('change', function() {
+    const customRange = document.getElementById('custom-date-range');
+    if (this.value === 'custom') {
+        customRange.style.display = 'block';
+        customRange.querySelector('input[name="start_date"]').required = true;
+        customRange.querySelector('input[name="end_date"]').required = true;
+    } else {
+        customRange.style.display = 'none';
+        customRange.querySelector('input[name="start_date"]').required = false;
+        customRange.querySelector('input[name="end_date"]').required = false;
+    }
+});
+
+function viewReportDetails(reportId) {
+    alert('报告详情功能即将推出');
+}
+
+function deleteReport(reportId) {
+    if (confirm('确定要删除此报告吗？')) {
+        fetch(`/monitoring/api/reports/${reportId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCsrfToken(),
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('删除失败：' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('删除失败：' + error.message);
+        });
+    }
+}
+
+function getCsrfToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='));
+    return cookieValue ? cookieValue.split('=')[1] : '';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}编辑{% else %}创建{% endif %}告警规则 - 监控管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="/monitoring/alert-rules/">告警规则</a></li>
+<li class="breadcrumb-item active">{% if object %}编辑{% else %}创建{% endif %}规则</li>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h4 class="mb-0">
+            <i class="fas fa-cog"></i> {% if object %}编辑{% else %}创建{% endif %}告警规则
+        </h4>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-section">
+                        <h4><i class="fas fa-info-circle"></i> 基本信息</h4>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.name.id_for_label }}" class="form-label">规则名称 *</label>
+                            {{ form.name }}
+                            <div class="form-text">为告警规则指定一个易于识别的名称</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.node.id_for_label }}" class="form-label">监控节点 *</label>
+                            {{ form.node }}
+                            <div class="form-text">选择要监控的Nginx节点</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">描述</label>
+                            {{ form.description }}
+                            <div class="form-text">可选，为规则添加详细说明</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-section">
+                        <h4><i class="fas fa-exclamation-triangle"></i> 告警条件</h4>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.metric_type.id_for_label }}" class="form-label">指标类型 *</label>
+                            {{ form.metric_type }}
+                            <div class="form-text">选择要监控的指标类型</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.threshold.id_for_label }}" class="form-label">阈值 *</label>
+                            {{ form.threshold }}
+                            <div class="form-text" id="threshold-help">
+                                当指标超过此值时触发告警
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.severity.id_for_label }}" class="form-label">告警级别 *</label>
+                            {{ form.severity }}
+                            <div class="form-text">选择告警的严重程度</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-section">
+                        <h4><i class="fas fa-clock"></i> 检查配置</h4>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.check_interval.id_for_label }}" class="form-label">检查间隔（秒） *</label>
+                            {{ form.check_interval }}
+                            <div class="form-text">告警检查的时间间隔（建议：60-300秒）</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.duration.id_for_label }}" class="form-label">持续时间（秒） *</label>
+                            {{ form.duration }}
+                            <div class="form-text">指标持续超过阈值的时间才触发告警（防止抖动）</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="form-section">
+                        <h4><i class="fas fa-toggle-on"></i> 启用状态</h4>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    启用此规则
+                                </label>
+                            </div>
+                            <div class="form-text">只有启用的规则才会被执行</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'monitoring:alert_rule_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 返回列表
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> 保存规则
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// 根据指标类型更新阈值说明
+document.getElementById('{{ form.metric_type.id_for_label }}').addEventListener('change', function() {
+    const thresholdHelp = document.getElementById('threshold-help');
+    const metricType = this.value;
+    
+    switch(metricType) {
+        case 'response_time':
+            thresholdHelp.textContent = '响应时间超过此值时触发告警（单位：毫秒）';
+            break;
+        case 'error_rate':
+            thresholdHelp.textContent = '错误率超过此值时触发告警（单位：%，如5表示5%）';
+            break;
+        case 'status_code':
+            thresholdHelp.textContent = '特定状态码出现次数超过此值时触发告警';
+            break;
+        case 'traffic':
+            thresholdHelp.textContent = '流量超过此值时触发告警（单位：MB/s）';
+            break;
+        default:
+            thresholdHelp.textContent = '当指标超过此值时触发告警';
+    }
+});
+
+// 页面加载时触发一次
+window.addEventListener('load', function() {
+    document.getElementById('{{ form.metric_type.id_for_label }}').dispatchEvent(new Event('change'));
+});
+</script>
+{% endblock %}

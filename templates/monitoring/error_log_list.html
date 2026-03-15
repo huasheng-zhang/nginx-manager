@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}错误日志 - 监控管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item active">错误日志</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-exclamation-triangle"></i> 错误日志</h2>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <form method="get" class="row mb-4">
+            <div class="col-md-3">
+                <select name="node" class="form-control">
+                    <option value="">所有节点</option>
+                    {% for node in view.nodes %}
+                    <option value="{{ node.pk }}" {% if request.GET.node == node.pk|stringformat:"s" %}selected{% endif %}>{{ node.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select name="log_level" class="form-control">
+                    <option value="">所有级别</option>
+                    <option value="debug" {% if request.GET.log_level == "debug" %}selected{% endif %}>Debug</option>
+                    <option value="info" {% if request.GET.log_level == "info" %}selected{% endif %}>Info</option>
+                    <option value="notice" {% if request.GET.log_level == "notice" %}selected{% endif %}>Notice</option>
+                    <option value="warn" {% if request.GET.log_level == "warn" %}selected{% endif %}>Warning</option>
+                    <option value="error" {% if request.GET.log_level == "error" %}selected{% endif %}>Error</option>
+                    <option value="crit" {% if request.GET.log_level == "crit" %}selected{% endif %}>Critical</option>
+                    <option value="alert" {% if request.GET.log_level == "alert" %}selected{% endif %}>Alert</option>
+                    <option value="emerg" {% if request.GET.log_level == "emerg" %}selected{% endif %}>Emergency</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="ip" class="form-control" placeholder="IP地址" value="{{ request.GET.ip }}">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
+            </div>
+            <div class="col-md-12 mt-3">
+                <button type="submit" class="btn btn-primary">筛选</button>
+                <a href="{% url 'monitoring:error_log_list' %}" class="btn btn-secondary">重置</a>
+            </div>
+        </form>
+
+        <!-- 日志列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>节点</th>
+                        <th>级别</th>
+                        <th>客户端</th>
+                        <th>消息</th>
+                        <th>服务器</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.time_local|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ log.node.name }}</td>
+                        <td>
+                            {% if log.log_level == 'emerg' or log.log_level == 'alert' or log.log_level == 'crit' %}
+                            <span class="badge bg-danger">{{ log.log_level|upper }}</span>
+                            {% elif log.log_level == 'error' %}
+                            <span class="badge bg-warning">{{ log.log_level|upper }}</span>
+                            {% elif log.log_level == 'warn' %}
+                            <span class="badge bg-info">{{ log.log_level|upper }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ log.log_level|upper }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.client|default:"-" }}</td>
+                        <td title="{{ log.message }}">{{ log.message|truncatechars:80 }}</td>
+                        <td>{{ log.server|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">暂无错误日志</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">&laquo; 首页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }} / {{ paginator.num_pages }}</span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ paginator.num_pages }}">末页 &raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 自动刷新数据（可选）
+    // setInterval(function() {
+    //     location.reload();
+    // }, 30000); // 每30秒刷新
+});
+</script>
+{% endblock %}

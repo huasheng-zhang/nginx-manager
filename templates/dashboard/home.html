@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}仪表板 - Nginx集群管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">仪表板</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- 统计卡片 -->
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">节点总数</div>
+                <div class="stat-value">{{ total_nodes }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">活跃节点</div>
+                <div class="stat-value">{{ active_nodes }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">路由规则</div>
+                <div class="stat-value">{{ total_routes }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="stat-label">限流规则</div>
+                <div class="stat-value">{{ total_rate_limits }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 请求统计图表 -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line"></i> 最近7天请求统计
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="requestsChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 实时状态 -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bell"></i> 未处理告警
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if active_alerts %}
+                <div class="list-group list-group-flush">
+                    {% for alert in active_alerts %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <h6 class="mb-1">{{ alert.rule.name }}</h6>
+                            <small class="status-badge severity-{{ alert.severity }}">{{ alert.get_severity_display }}</small>
+                        </div>
+                        <p class="mb-1 text-muted">{{ alert.node.name }}</p>
+                        <small>{{ alert.started_at|date:"Y-m-d H:i:s" }}</small>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-muted text-center">暂无未处理告警</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 最近访问日志 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-alt"></i> 最近访问日志
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>IP</th>
+                                <th>状态</th>
+                                <th>URI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_access_logs %}
+                            <tr>
+                                <td>{{ log.time_local|date:"m-d H:i" }}</td>
+                                <td>{{ log.remote_addr }}</td>
+                                <td>
+                                    {% if log.status < 400 %}
+                                    <span class="badge bg-success">{{ log.status }}</span>
+                                    {% elif log.status < 500 %}
+                                    <span class="badge bg-warning">{{ log.status }}</span>
+                                    {% else %}
+                                    <span class="badge bg-danger">{{ log.status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                                    {{ log.request_uri }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 最近错误日志 -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> 最近错误日志
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>时间</th>
+                                <th>级别</th>
+                                <th>节点</th>
+                                <th>消息</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in recent_errors %}
+                            <tr>
+                                <td>{{ log.time_local|date:"m-d H:i" }}</td>
+                                <td>
+                                    <span class="badge bg-danger">{{ log.log_level }}</span>
+                                </td>
+                                <td>{{ log.node.name }}</td>
+                                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+                                    {{ log.message }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 加载仪表板数据
+$(document).ready(function() {
+    $.ajax({
+        url: '/accounts/api/dashboard-data/',
+        method: 'GET',
+        success: function(response) {
+            // 请求统计图表
+            const ctx = document.getElementById('requestsChart').getContext('2d');
+            const dates = response.daily_stats.map(item => item.date);
+            const counts = response.daily_stats.map(item => item.count);
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: '请求数',
+                        data: counts,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

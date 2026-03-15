@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}编辑{% else %}添加{% endif %}限流规则 - Nginx集群管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="{% url 'nginx:rate_limit_list' %}">限流规则</a></li>
+<li class="breadcrumb-item active">{% if object %}编辑{% else %}添加{% endif %}规则</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+        <i class="fas fa-tachometer-alt"></i>
+        {% if object %}编辑限流规则{% else %}添加限流规则{% endif %}
+    </h2>
+    <a href="{% url 'nginx:rate_limit_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> 返回列表
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-section">
+                <h4>基本信息</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">规则名称 *</label>
+                            {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="text-danger">{{ form.name.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">所属节点 *</label>
+                            {{ form.node }}
+                            {% if form.node.errors %}
+                            <div class="text-danger">{{ form.node.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">限流维度 *</label>
+                            {{ form.limit_by }}
+                            {% if form.limit_by.errors %}
+                            <div class="text-danger">{{ form.limit_by.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">每秒请求数 *</label>
+                            {{ form.requests_per_second }}
+                            {% if form.requests_per_second.errors %}
+                            <div class="text-danger">{{ form.requests_per_second.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label class="form-label">突发请求数</label>
+                            {{ form.burst }}
+                            {% if form.burst.errors %}
+                            <div class="text-danger">{{ form.burst.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <div class="form-check">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    启用规则
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>应用范围</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">域名列表</label>
+                            {{ form.domains }}
+                            {% if form.domains.errors %}
+                            <div class="text-danger">{{ form.domains.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                逗号分隔的域名列表，如：example.com,api.example.com（留空表示所有域名）
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">路径列表</label>
+                            {{ form.paths }}
+                            {% if form.paths.errors %}
+                            <div class="text-danger">{{ form.paths.errors }}</div>
+                            {% endif %}
+                            <small class="form-text text-muted">
+                                逗号分隔的路径列表，如：/api/,/login/（留空表示所有路径）
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                提示：限流规则用于控制客户端的请求频率，防止恶意请求或过载。
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <a href="{% url 'nginx:rate_limit_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-times"></i> 取消
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> 保存
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

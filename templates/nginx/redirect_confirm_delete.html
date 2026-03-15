@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}删除重定向规则 - Nginx管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="/nginx/redirects/">重定向规则</a></li>
+<li class="breadcrumb-item active">删除规则</li>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> 确认删除
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="lead">您确定要删除以下重定向规则吗？</p>
+                
+                <div class="alert alert-warning">
+                    <h5>{{ object.name }}</h5>
+                    <hr>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">规则名称：</dt>
+                        <dd class="col-sm-8">{{ object.name }}</dd>
+                        
+                        <dt class="col-sm-4">源域名：</dt>
+                        <dd class="col-sm-8">{{ object.source_domain }}</dd>
+                        
+                        <dt class="col-sm-4">目标URL：</dt>
+                        <dd class="col-sm-8">{{ object.target_url }}</dd>
+                        
+                        <dt class="col-sm-4">重定向类型：</dt>
+                        <dd class="col-sm-8">{{ object.get_redirect_type_display }}</dd>
+                        
+                        <dt class="col-sm-4">状态码：</dt>
+                        <dd class="col-sm-8">{{ object.status_code }}</dd>
+                        
+                        {% if object.description %}
+                        <dt class="col-sm-4">描述：</dt>
+                        <dd class="col-sm-8">{{ object.description }}</dd>
+                        {% endif %}
+                        
+                        <dt class="col-sm-4">启用状态：</dt>
+                        <dd class="col-sm-8">
+                            {% if object.is_active %}
+                                <span class="badge bg-success">已启用</span>
+                            {% else %}
+                                <span class="badge bg-secondary">已禁用</span>
+                            {% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">创建时间：</dt>
+                        <dd class="col-sm-8">{{ object.created_at|date:"Y-m-d H:i:s" }}</dd>
+                    </dl>
+                </div>
+                
+                <div class="alert alert-danger mb-4">
+                    <strong>警告！</strong> 此操作不可撤销，删除后该重定向规则将立即失效。
+                </div>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'nginx:redirect_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> 取消
+                        </a>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash"></i> 确认删除
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

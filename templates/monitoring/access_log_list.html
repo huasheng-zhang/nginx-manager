@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}访问日志 - 监控管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item active">访问日志</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-chart-line"></i> 访问日志</h2>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <form method="get" class="row mb-4">
+            <div class="col-md-2">
+                <select name="node" class="form-control">
+                    <option value="">所有节点</option>
+                    {% for node in view.nodes %}
+                    <option value="{{ node.pk }}" {% if request.GET.node == node.pk|stringformat:"s" %}selected{% endif %}>{{ node.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="status" class="form-control">
+                    <option value="">所有状态</option>
+                    <option value="200" {% if request.GET.status == "200" %}selected{% endif %}>200 OK</option>
+                    <option value="301" {% if request.GET.status == "301" %}selected{% endif %}>301 重定向</option>
+                    <option value="302" {% if request.GET.status == "302" %}selected{% endif %}>302 重定向</option>
+                    <option value="304" {% if request.GET.status == "304" %}selected{% endif %}>304 未修改</option>
+                    <option value="400" {% if request.GET.status == "400" %}selected{% endif %}>400 错误请求</option>
+                    <option value="401" {% if request.GET.status == "401" %}selected{% endif %}>401 未授权</option>
+                    <option value="403" {% if request.GET.status == "403" %}selected{% endif %}>403 禁止访问</option>
+                    <option value="404" {% if request.GET.status == "404" %}selected{% endif %}>404 未找到</option>
+                    <option value="500" {% if request.GET.status == "500" %}selected{% endif %}>500 服务器错误</option>
+                    <option value="502" {% if request.GET.status == "502" %}selected{% endif %}>502 错误网关</option>
+                    <option value="503" {% if request.GET.status == "503" %}selected{% endif %}>503 服务不可用</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="text" name="ip" class="form-control" placeholder="IP地址" value="{{ request.GET.ip }}">
+            </div>
+            <div class="col-md-2">
+                <select name="method" class="form-control">
+                    <option value="">所有方法</option>
+                    <option value="GET" {% if request.GET.method == "GET" %}selected{% endif %}>GET</option>
+                    <option value="POST" {% if request.GET.method == "POST" %}selected{% endif %}>POST</option>
+                    <option value="PUT" {% if request.GET.method == "PUT" %}selected{% endif %}>PUT</option>
+                    <option value="DELETE" {% if request.GET.method == "DELETE" %}selected{% endif %}>DELETE</option>
+                    <option value="HEAD" {% if request.GET.method == "HEAD" %}selected{% endif %}>HEAD</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date }}">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date }}">
+            </div>
+            <div class="col-md-12 mt-3">
+                <button type="submit" class="btn btn-primary">筛选</button>
+                <a href="{% url 'monitoring:access_log_list' %}" class="btn btn-secondary">重置</a>
+            </div>
+        </form>
+
+        <!-- 日志列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>时间</th>
+                        <th>节点</th>
+                        <th>IP地址</th>
+                        <th>方法</th>
+                        <th>URL</th>
+                        <th>状态</th>
+                        <th>响应时间</th>
+                        <th>大小</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.time_local|date:"Y-m-d H:i:s" }}</td>
+                        <td>{{ log.node.name }}</td>
+                        <td>{{ log.remote_addr }}</td>
+                        <td><span class="badge bg-info">{{ log.request_method }}</span></td>
+                        <td title="{{ log.request_uri }}">{{ log.request_uri|truncatechars:50 }}</td>
+                        <td>
+                            {% if log.status >= 500 %}
+                            <span class="badge bg-danger">{{ log.status }}</span>
+                            {% elif log.status >= 400 %}
+                            <span class="badge bg-warning">{{ log.status }}</span>
+                            {% elif log.status >= 300 %}
+                            <span class="badge bg-info">{{ log.status }}</span>
+                            {% else %}
+                            <span class="badge bg-success">{{ log.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.request_time|default:"-" }}s</td>
+                        <td>{{ log.body_bytes_sent|filesizeformat }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">暂无日志数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- 分页 -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">&laquo; 首页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">上一页</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">{{ page_obj.number }} / {{ paginator.num_pages }}</span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">下一页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ paginator.num_pages }}">末页 &raquo;</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // 自动刷新数据（可选）
+    // setInterval(function() {
+    //     location.reload();
+    // }, 30000); // 每30秒刷新
+});
+</script>
+{% endblock %}

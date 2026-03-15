@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+
+{% block title %}{{ node.name }} - Nginx节点详情{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="{% url 'nginx:node_list' %}">Nginx节点</a></li>
+<li class="breadcrumb-item active">{{ node.name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-server"></i> {{ node.name }}</h2>
+    <div>
+        {% if user_permissions.can_edit_nodes %}
+        <button onclick="manageNode({{ node.pk }}, 'test', this)" class="btn btn-outline-info btn-sm" title="测试连接">
+            <i class="fas fa-plug"></i> 测试连接
+        </button>
+        <button onclick="manageNode({{ node.pk }}, 'status', this)" class="btn btn-outline-primary btn-sm" title="检查状态">
+            <i class="fas fa-sync"></i> 检查状态
+        </button>
+        {% endif %}
+        <a href="{% url 'nginx:node_list' %}" class="btn btn-secondary btn-sm">
+            <i class="fas fa-arrow-left"></i> 返回列表
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> 基本信息</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <th>节点名称</th>
+                        <td>{{ node.name }}</td>
+                    </tr>
+                    <tr>
+                        <th>主机地址</th>
+                        <td>{{ node.host }}</td>
+                    </tr>
+                    <tr>
+                        <th>端口</th>
+                        <td>{{ node.port }}</td>
+                    </tr>
+                    <tr>
+                        <th>状态</th>
+                        <td>
+                            <span class="status-badge status-{{ node.status }}">
+                                {{ node.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>配置文件路径</th>
+                        <td><code>{{ node.config_path }}</code></td>
+                    </tr>
+                    <tr>
+                        <th>创建时间</th>
+                        <td>{{ node.created_at|date:"Y-m-d H:i:s" }}</td>
+                    </tr>
+                    <tr>
+                        <th>更新时间</th>
+                        <td>{{ node.updated_at|date:"Y-m-d H:i:s" }}</td>
+                    </tr>
+                    {% if node.description %}
+                    <tr>
+                        <th>描述</th>
+                        <td>{{ node.description }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-cogs"></i> 节点控制</h5>
+            </div>
+            <div class="card-body">
+                {% if user_permissions.can_edit_nodes %}
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h6>快速操作</h6>
+                        <div class="btn-group" role="group">
+                            <button onclick="manageNode({{ node.pk }}, 'start', this)" class="btn btn-success">
+                                <i class="fas fa-play"></i> 启动
+                            </button>
+                            <button onclick="manageNode({{ node.pk }}, 'stop', this)" class="btn btn-danger">
+                                <i class="fas fa-stop"></i> 停止
+                            </button>
+                            <button onclick="manageNode({{ node.pk }}, 'restart', this)" class="btn btn-warning">
+                                <i class="fas fa-redo"></i> 重启
+                            </button>
+                            <button onclick="manageNode({{ node.pk }}, 'reload', this)" class="btn btn-info">
+                                <i class="fas fa-sync-alt"></i> 重载配置
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div id="nginxInfo" class="d-none">
+                    <h6>Nginx信息</h6>
+                    <div class="alert alert-info">
+                        <pre id="nginxInfoContent" class="mb-0" style="font-size: 0.875em;"></pre>
+                    </div>
+                </div>
+                
+                <div class="alert alert-light">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        使用SSH连接管理Nginx节点，需要配置SSH凭证（支持密码或密钥认证）
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> 关联规则</h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="rulesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="route-tab" data-bs-toggle="tab" data-bs-target="#route" type="button" role="tab">
+                            <i class="fas fa-route"></i> 路由规则 ({{ route_rules|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="rate-limit-tab" data-bs-toggle="tab" data-bs-target="#rate-limit" type="button" role="tab">
+                            <i class="fas fa-tachometer-alt"></i> 限流规则 ({{ rate_limit_rules|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="redirect-tab" data-bs-toggle="tab" data-bs-target="#redirect" type="button" role="tab">
+                            <i class="fas fa-exchange-alt"></i> 重定向规则 ({{ redirect_rules|length }})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="ip-block-tab" data-bs-toggle="tab" data-bs-target="#ip-block" type="button" role="tab">
+                            <i class="fas fa-shield-alt"></i> IP封禁规则 ({{ ip_block_rules|length }})
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="rulesTabContent">
+                    <div class="tab-pane fade show active" id="route" role="tabpanel">
+                        {% if route_rules %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>规则名称</th>
+                                        <th>域名</th>
+                                        <th>路径</th>
+                                        <th>类型</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rule in route_rules %}
+                                    <tr>
+                                        <td>{{ rule.name }}</td>
+                                        <td>{{ rule.domain }}</td>
+                                        <td>{{ rule.path }}</td>
+                                        <td>{{ rule.get_rule_type_display }}</td>
+                                        <td>
+                                            <span class="status-badge status-{{ rule.is_active|yesno:'active,inactive' }}">
+                                                {{ rule.is_active|yesno:'启用,禁用' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-center text-muted mt-3">暂无路由规则</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="rate-limit" role="tabpanel">
+                        {% if rate_limit_rules %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>规则名称</th>
+                                        <th>限流维度</th>
+                                        <th>请求数/秒</th>
+                                        <th>突发</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rule in rate_limit_rules %}
+                                    <tr>
+                                        <td>{{ rule.name }}</td>
+                                        <td>{{ rule.get_limit_by_display }}</td>
+                                        <td>{{ rule.requests_per_second }}</td>
+                                        <td>{{ rule.burst }}</td>
+                                        <td>
+                                            <span class="status-badge status-{{ rule.is_active|yesno:'active,inactive' }}">
+                                                {{ rule.is_active|yesno:'启用,禁用' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-center text-muted mt-3">暂无重定向规则</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="redirect" role="tabpanel">
+                        {% if redirect_rules %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>规则名称</th>
+                                        <th>源域名</th>
+                                        <th>源路径</th>
+                                        <th>目标URL</th>
+                                        <th>类型</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rule in redirect_rules %}
+                                    <tr>
+                                        <td>{{ rule.name }}</td>
+                                        <td>{{ rule.source_domain }}</td>
+                                        <td>{{ rule.source_path|default:"/" }}</td>
+                                        <td>{{ rule.target_url }}</td>
+                                        <td>{{ rule.redirect_type }}</td>
+                                        <td>
+                                            <span class="status-badge status-{{ rule.is_active|yesno:'active,inactive' }}">
+                                                {{ rule.is_active|yesno:'启用,禁用' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-center text-muted mt-3">暂无重定向规则</p>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="tab-pane fade" id="ip-block" role="tabpanel">
+                        {% if ip_block_rules %}
+                        <div class="table-responsive mt-3">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>规则名称</th>
+                                        <th>IP地址</th>
+                                        <th>操作</th>
+                                        <th>应用域名</th>
+                                        <th>状态</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rule in ip_block_rules %}
+                                    <tr>
+                                        <td>{{ rule.name }}</td>
+                                        <td>{{ rule.ip_address }}{% if rule.subnet_mask %}/{{ rule.subnet_mask }}{% endif %}</td>
+                                        <td>{{ rule.get_action_display }}</td>
+                                        <td>{{ rule.domains|default:"所有域名"|truncatechars:30 }}</td>
+                                        <td>
+                                            <span class="status-badge status-{{ rule.is_active|yesno:'active,inactive' }}">
+                                                {{ rule.is_active|yesno:'启用,禁用' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-center text-muted mt-3">暂无IP封禁规则</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 状态模态框 -->
+<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="statusModalLabel">节点状态</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="statusContent">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">加载中...</span>
+                        </div>
+                        <p class="mt-2">正在检查节点状态...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.status-badge {
+    padding: 0.25em 0.6em;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    font-weight: 500;
+}
+
+.status-active {
+    background-color: #d1f7e9;
+    color: #0a6e4d;
+}
+
+.status-inactive {
+    background-color: #ffe0e0;
+    color: #c41e3a;
+}
+
+.status-error {
+    background-color: #fff3cd;
+    color: #856404;
+}
+</style>
+
+<script>
+// 从node_list.html复用的函数
+function manageNode(nodeId, action, buttonElement) {
+    if (buttonElement) {
+        buttonElement.disabled = true;
+    }
+    
+    const loadingToast = showToast('info', `正在${getActionDisplayName(action)}...`);
+    
+    fetch(`/nginx/api/nodes/${nodeId}/${action}/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideToast(loadingToast);
+        
+        if (data.success) {
+            showToast('success', data.message || `${getActionDisplayName(action)}成功`);
+            
+            if (action === 'status') {
+                showStatusModal(data);
+            }
+            
+            if (action === 'status' && data.info) {
+                document.getElementById('nginxInfo').classList.remove('d-none');
+                document.getElementById('nginxInfoContent').textContent = JSON.stringify(data.info, null, 2);
+            }
+            
+            setTimeout(() => {
+                if (action !== 'status') {
+                    window.location.reload();
+                }
+            }, 1500);
+        } else {
+            showToast('error', data.error || `${getActionDisplayName(action)}失败`);
+        }
+    })
+    .catch(error => {
+        hideToast(loadingToast);
+        showToast('error', `操作失败: ${error.message}`);
+        console.error('Error:', error);
+    })
+    .finally(() => {
+        if (buttonElement) {
+            buttonElement.disabled = false;
+        }
+    });
+}
+
+function getActionDisplayName(action) {
+    const actionMap = {
+        'start': '启动',
+        'stop': '停止',
+        'reload': '重载配置',
+        'restart': '重启',
+        'status': '检查状态',
+        'test': '测试连接'
+    };
+    return actionMap[action] || action;
+}
+
+function showStatusModal(data) {
+    const modal = new bootstrap.Modal(document.getElementById('statusModal'));
+    const content = document.getElementById('statusContent');
+    
+    let html = `
+        <div class="row">
+            <div class="col-12 mb-3">
+                <h6>状态: <span class="status-badge status-${data.status}">${data.status_display}</span></h6>
+            </div>
+        </div>
+    `;
+    
+    if (data.info && (data.info.version || data.info.config_path)) {
+        html += `
+            <div class="row">
+                <div class="col-12">
+                    <h6>Nginx信息</h6>
+                    <div class="bg-light p-3 rounded">
+        `;
+        
+        if (data.info.version) {
+            html += `<div><strong>版本:</strong> ${data.info.version}</div>`;
+        }
+        if (data.info.config_path) {
+            html += `<div><strong>配置路径:</strong> ${data.info.config_path}</div>`;
+        }
+        if (data.info.error_log_path) {
+            html += `<div><strong>错误日志:</strong> ${data.info.error_log_path}</div>`;
+        }
+        if (data.info.access_log_path) {
+            html += `<div><strong>访问日志:</strong> ${data.info.access_log_path}</div>`;
+        }
+        
+        html += `
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    content.innerHTML = html;
+    modal.show();
+}
+
+function showToast(type, message) {
+    const toastId = 'toast-' + Date.now();
+    const toastHtml = `
+        <div id="${toastId}" class="toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} border-0" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 250px;">
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', toastHtml);
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+    toast.show();
+    
+    toastElement.addEventListener('hidden.bs.toast', () => {
+        toastElement.remove();
+    });
+    
+    return toastId;
+}
+
+function hideToast(toastId) {
+    const toastElement = document.getElementById(toastId);
+    if (toastElement) {
+        const toast = bootstrap.Toast.getInstance(toastElement);
+        if (toast) {
+            toast.hide();
+        }
+    }
+}
+
+function getCsrfToken() {
+    const cookieValue = document.cookie
+        .split('; ')
+        .find(row => row.startsWith('csrftoken='));
+    return cookieValue ? cookieValue.split('=')[1] : '';
+}
+</script>
+{% endblock %}

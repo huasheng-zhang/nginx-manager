@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}限流规则 - Nginx集群管理{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="/">首页</a></li>
+<li class="breadcrumb-item"><a href="{% url 'nginx:node_list' %}">Nginx节点</a></li>
+<li class="breadcrumb-item active">限流规则</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-tachometer-alt"></i> 限流规则管理</h2>
+    {% if user_permissions.can_manage_rate_limits %}
+    <a href="{% url 'nginx:rate_limit_add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> 添加规则
+    </a>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <!-- 搜索和筛选 -->
+        <form method="get" class="row mb-4">
+            <div class="col-md-3">
+                <select name="node" class="form-control">
+                    <option value="">所有节点</option>
+                    {% for node in nodes %}
+                    <option value="{{ node.pk }}" {% if request.GET.node == node.pk|stringformat:"s" %}selected{% endif %}>{{ node.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" placeholder="搜索规则名称" 
+                       value="{{ request.GET.search }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+                <a href="{% url 'nginx:rate_limit_list' %}" class="btn btn-secondary">
+                    <i class="fas fa-refresh"></i> 重置
+                </a>
+            </div>
+        </form>
+        
+        <!-- 限流规则列表 -->
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>规则名称</th>
+                        <th>所属节点</th>
+                        <th>限流维度</th>
+                        <th>每秒请求数</th>
+                        <th>突发请求数</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rate_limit in rate_limits %}
+                    <tr>
+                        <td><strong>{{ rate_limit.name }}</strong></td>
+                        <td>{{ rate_limit.node.name }}</td>
+                        <td>
+                            <span class="badge bg-info">{{ rate_limit.get_limit_by_display }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ rate_limit.requests_per_second }} req/s</span>
+                        </td>
+                        <td>
+                            {% if rate_limit.burst > 0 %}
+                            <span class="badge bg-warning">+{{ rate_limit.burst }}</span>
+                            {% else %}
+                            <span class="badge bg-secondary">无</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ rate_limit.is_active|yesno:'active,inactive' }}">
+                                {{ rate_limit.is_active|yesno:'启用,禁用' }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                {% if user_permissions.can_manage_rate_limits %}
+                                <button onclick="toggleRuleStatus('rate_limit', {{ rate_limit.pk }}, this)" 
+                                        class="btn btn-outline-{{ rate_limit.is_active|yesno:'danger,success' }}" 
+                                        title="{{ rate_limit.is_active|yesno:'禁用,启用' }}">
+                                    <i class="fas fa-{{ rate_limit.is_active|yesno:'pause,play' }}"></i>
+                                </button>
+                                {% endif %}
+                                {% if user_permissions.can_manage_rate_limits %}
+                                <a href="{% url 'nginx:rate_limit_edit' rate_limit.pk %}" class="btn btn-outline-secondary" title="编辑">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                                {% if user_permissions.can_manage_rate_limits %}
+                                <a href="{% url 'nginx:rate_limit_delete' rate_limit.pk %}" class="btn btn-outline-danger" title="删除">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted">暂无数据</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
