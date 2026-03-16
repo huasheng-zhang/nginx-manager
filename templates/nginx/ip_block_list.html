@@ -102,12 +102,12 @@
                                 </button>
                                 {% endif %}
                                 {% if user_permissions.can_manage_ip_blocks %}
-                                <a href="{% url 'nginx:ipblock_edit' ip_block.pk %}" class="btn btn-outline-secondary" title="编辑">
+                                <a href="{% url 'nginx:ip_block_edit' ip_block.pk %}" class="btn btn-outline-secondary" title="编辑">
                                     <i class="fas fa-edit"></i>
                                 </a>
                                 {% endif %}
                                 {% if user_permissions.can_manage_ip_blocks %}
-                                <a href="{% url 'nginx:ipblock_delete' ip_block.pk %}" class="btn btn-outline-danger" title="删除">
+                                <a href="{% url 'nginx:ip_block_delete' ip_block.pk %}" class="btn btn-outline-danger" title="删除">
                                     <i class="fas fa-trash"></i>
                                 </a>
                                 {% endif %}
