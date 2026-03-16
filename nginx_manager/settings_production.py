@@ -17,8 +17,19 @@ SECRET_KEY = os.environ.get('SECRET_KEY') or 'django-insecure-change-this-secret
 # 关闭调试模式
 DEBUG = False
 
-# 允许访问的主机（从环境变量获取）
-ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# 允许访问的主机（从环境变量获取，或添加你的公网IP）
+# 重要：生产环境必须添加你的域名或IP地址
+# 注意：如果环境变量存在但为空，会导致ALLOWED_HOSTS为空列表
+ALLOWED_HOSTS = []
+if os.environ.get('DJANGO_ALLOWED_HOSTS'):
+    ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS').split(',')
+else:
+    # 默认允许的 hosts
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '110.41.183.3']
+
+# 或者直接在下面配置（更简单）：
+# ALLOWED_HOSTS = ['localhost', '127.0.0.1', '110.41.183.3']
+# 如果需要允许多个IP或域名，直接添加到列表中
 
 # 强制 HTTPS（生产环境建议开启）
 SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'True') == 'True'

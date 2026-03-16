@@ -448,20 +448,10 @@ def create_nginx_agent(node) -> Optional[NginxAgent]:
     Returns:
         Optional[NginxAgent]: NginxAgent实例或None
     """
-    # 这里可以根据节点配置返回不同的认证信息
-    # 实际应用中应该从配置或数据库中获取SSH凭证
-    
-    # 示例：从环境变量或配置文件读取SSH配置
-    import os
-    
-    ssh_username = os.environ.get('NGINX_SSH_USER', 'root')
-    ssh_password = os.environ.get('NGINX_SSH_PASSWORD', None)
-    ssh_key_path = os.environ.get('NGINX_SSH_KEY_PATH', None)
-    
     return NginxAgent(
         host=node.host,
-        port=22,  # 默认SSH端口
-        username=ssh_username,
-        password=ssh_password,
-        key_path=ssh_key_path
+        port=node.ssh_port or 22,  # 使用节点配置的SSH端口，默认22
+        username=node.ssh_username or 'root',  # 使用节点配置的SSH用户名，默认root
+        password=node.ssh_password,  # 使用节点配置的SSH密码
+        key_path=node.ssh_key_path  # 使用节点配置的SSH私钥路径
     )

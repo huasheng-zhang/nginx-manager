@@ -6,7 +6,8 @@ class NginxNodeForm(forms.ModelForm):
     """Nginx节点表单"""
     class Meta:
         model = NginxNode
-        fields = ['name', 'host', 'port', 'status', 'config_path', 'description']
+        fields = ['name', 'host', 'port', 'status', 'config_path', 'description', 
+                 'ssh_port', 'ssh_username', 'ssh_password', 'ssh_key_path']
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入节点名称'}),
             'host': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入主机地址'}),
@@ -14,6 +15,10 @@ class NginxNodeForm(forms.ModelForm):
             'status': forms.Select(attrs={'class': 'form-control'}),
             'config_path': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '请输入配置文件路径'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '请输入描述信息'}),
+            'ssh_port': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'SSH端口，默认22'}),
+            'ssh_username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'SSH用户名，默认root'}),
+            'ssh_password': forms.PasswordInput(attrs={'class': 'form-control', 'placeholder': 'SSH密码（可选）'}, render_value=True),
+            'ssh_key_path': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'SSH私钥路径，如：/root/.ssh/id_rsa'}),
         }
 
 

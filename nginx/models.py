@@ -17,6 +17,13 @@ class NginxNode(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='inactive', verbose_name='状态')
     config_path = models.CharField(max_length=255, verbose_name='配置文件路径', default='/etc/nginx/nginx.conf')
     description = models.TextField(blank=True, verbose_name='描述')
+    
+    # SSH连接配置
+    ssh_port = models.IntegerField(default=22, verbose_name='SSH端口')
+    ssh_username = models.CharField(max_length=100, default='root', verbose_name='SSH用户名')
+    ssh_password = models.CharField(max_length=255, blank=True, null=True, verbose_name='SSH密码')
+    ssh_key_path = models.CharField(max_length=255, blank=True, null=True, verbose_name='SSH私钥路径')
+    
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='更新时间')
     

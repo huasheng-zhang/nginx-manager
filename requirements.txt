@@ -1,5 +1,5 @@
 # Web Framework
-Django>=3.2,<4.0  # Django 3.2 LTS (长期支持版本)
+Django>=4.2,<5.0  # Django 4.2 LTS (长期支持版本)
 
 # Database Support
 dj-database-url>=1.0.0
