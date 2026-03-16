@@ -1,0 +1,14 @@
+feat: Add node-level SSH configuration for Nginx nodes
+
+- Add SSH configuration fields to NginxNode model (ssh_port, ssh_username, ssh_password, ssh_key_path)
+- Update create_nginx_agent to use node-specific SSH credentials instead of environment variables
+- Modify NginxNodeForm to include SSH configuration fields in web UI
+- Create database migration 0002 to add SSH fields to database
+- Update Django version to 4.2 LTS in requirements.txt
+- Add MIGRATION_SUMMARY.md with detailed documentation
+
+This change allows each Nginx node to have independent SSH credentials,
+supporting both password and key-based authentication methods.
+
+BREAKING CHANGE: SSH credentials are now configured per-node in the database
+instead of using global NGINX_SSH_* environment variables.

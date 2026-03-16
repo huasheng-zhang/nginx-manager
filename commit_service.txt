@@ -1,0 +1,5 @@
+Add nginx-manager systemd service file
+
+- Add deploy/nginx-manager.service with gunicorn configuration
+- Bind to 0.0.0.0:8000 to allow external access
+- Include production settings and logging configuration

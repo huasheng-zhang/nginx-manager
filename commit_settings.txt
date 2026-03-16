@@ -1,0 +1,6 @@
+Fix: Update settings_production.py with defaults and SQLite
+
+- Add default SECRET_KEY for production (must change in production)
+- Change default database to SQLite (simpler for deployment)
+- Comment PostgreSQL config with instructions
+- Fix ModuleNotFoundError for psycopg2

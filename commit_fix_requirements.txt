@@ -1,0 +1,5 @@
+Fix: Update Django version from 6.0.0 to 3.2 LTS
+
+- Django 6.0.0 does not exist, use Django 3.2 LTS instead
+- Add complete dependencies for production use
+- Include gunicorn for production server

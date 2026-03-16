@@ -1,0 +1,10 @@
+Initial commit: Django-based Nginx Management System
+
+- Complete Django web application for Nginx management
+- User authentication and authorization system
+- Nginx configuration management interface
+- Real-time monitoring and statistics dashboard
+- Log viewing and analysis tools
+- Multi-tenant support with account isolation
+- Docker deployment support
+- Comprehensive documentation

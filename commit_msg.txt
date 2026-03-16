@@ -1,0 +1,8 @@
+\"feat: Add automatic Nginx config sync on rule changes\" 
+  
+\"- Add Django signals to auto-trigger config generation and deployment\"  
+\"- Create NginxConfigGenerator for converting rules to Nginx config\"  
+\"- Add sync_node_config() and sync_all_nodes() functions\"  
+\"- Add API endpoints for manual sync and config preview\"  
+\"- Update Django settings with logging configuration\"  
+\"- Add comprehensive documentation for auto-sync feature\" 
