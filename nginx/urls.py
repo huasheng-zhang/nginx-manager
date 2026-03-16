@@ -50,4 +50,8 @@ urlpatterns = [
     
     # 健康检查API
     path('api/v1/agent/health/', api.nginx_agent_health_api, name='agent_api_health'),
+    
+    # 配置同步API
+    path('api/v1/agent/nodes/<int:node_id>/sync/', api.sync_node_config_api, name='agent_api_sync'),
+    path('api/v1/agent/nodes/<int:node_id>/preview/', api.preview_node_config_api, name='agent_api_preview'),
 ]

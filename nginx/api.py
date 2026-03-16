@@ -17,6 +17,7 @@ from django.shortcuts import get_object_or_404
 from accounts.permissions import get_user_permissions
 from .models import NginxNode
 from .agent import create_nginx_agent, NginxAgent, CommandResult
+from .config_generator import sync_node_config
 
 logger = logging.getLogger(__name__)
 
@@ -413,3 +414,89 @@ def nginx_agent_health_api(request):
         'redis': redis_status,
         'service': 'nginx_agent_api'
     })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def sync_node_config_api(request, node_id):
+    """
+    同步节点配置API
+    生成并应用Nginx配置到远程节点
+    
+    Args:
+        request: HTTP请求
+        node_id: 节点ID
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': '未登录'}, status=401)
+    
+    # 检查权限
+    permissions = get_user_permissions(request.user)
+    if not permissions.get('can_edit_nodes', False):
+        return JsonResponse({'error': '无权限管理节点'}, status=403)
+    
+    try:
+        success = sync_node_config(node_id)
+        
+        if success:
+            return JsonResponse({
+                'success': True,
+                'message': '节点配置同步成功'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': '节点配置同步失败，请查看日志'
+            }, status=500)
+            
+    except Exception as e:
+        logger.error(f"同步节点配置失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'同步失败: {str(e)}'
+        }, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+def preview_node_config_api(request, node_id):
+    """
+    预览节点配置API
+    生成并返回Nginx配置内容（不应用）
+    
+    Args:
+        request: HTTP请求
+        node_id: 节点ID
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': '未登录'}, status=401)
+    
+    # 检查权限
+    permissions = get_user_permissions(request.user)
+    if not permissions.get('can_view_nodes', False):
+        return JsonResponse({'error': '无权限查看节点'}, status=403)
+    
+    try:
+        from .models import NginxNode
+        from .config_generator import NginxConfigGenerator
+        
+        node = get_object_or_404(NginxNode, pk=node_id)
+        generator = NginxConfigGenerator(node)
+        config_content = generator.generate_full_config()
+        
+        return JsonResponse({
+            'success': True,
+            'node': {
+                'id': node.id,
+                'name': node.name,
+                'host': node.host
+            },
+            'config': config_content
+        })
+            
+    except Exception as e:
+        logger.error(f"预览节点配置失败: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': f'预览失败: {str(e)}'
+        }, status=500)
